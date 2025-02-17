@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block page_title %}Gestione Socio{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Messages Flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Selettore Socio -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="card-title mb-0">Seleziona Socio</h5>
+        </div>
+        <div class="card-body">
+            <select class="form-select" id="selectSocio" onchange="window.location.href='/gestione-socio/' + this.value">
+                <option value="" {% if not socio_selezionato %}selected{% endif %}>Seleziona un socio...</option>
+                {% for s in soci_attivi %}
+                    <option value="{{ s.id }}" {% if socio_selezionato and socio_selezionato.id == s.id %}selected{% endif %}>
+                        {{ s.nome }} {{ s.cognome }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    {% if socio_selezionato %}
+    <!-- Dettagli Socio -->
+    <div class="row">
+        <!-- Modifica Quota -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Modifica Quota</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('update_quota_socio', socio_id=socio_selezionato.id) }}" method="POST">
+                        <div class="mb-3">
+                            <label for="quota" class="form-label">Quota</label>
+                            <select class="form-select" id="quota" name="quota" required>
+                                {% for q in quote %}
+                                <option value="{{ q[1] }}" {% if socio_selezionato.tipo_pesca == q[1] %}selected{% endif %}>
+                                    {{ q[1] }} - €{{ "%.2f"|format(q[2]) }} ({{ q[3] }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Aggiorna Quota</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modifica Note -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Note</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('update_note_socio', socio_id=socio_selezionato.id) }}" method="POST">
+                        <div class="mb-3">
+                            <textarea class="form-control" name="note" rows="4">{{ socio_selezionato.note }}</textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Aggiorna Note</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Aggiungi Prodotto Bar -->
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Aggiungi Prodotto Bar</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('add_prodotto_socio', socio_id=socio_selezionato.id) }}" method="POST" class="row g-3">
+                        <div class="col-md-6">
+                            <label for="prodotto" class="form-label">Prodotto</label>
+                            <select class="form-select" id="prodotto" name="prodotto_id" required>
+                                {% for p in prodotti_bar %}
+                                <option value="{{ p[0] }}">{{ p[1] }} - €{{ "%.2f"|format(p[2]) }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="quantita" class="form-label">Quantità</label>
+                            <input type="number" class="form-control" id="quantita" name="quantita" value="1" min="1" required>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus-circle me-2"></i>Aggiungi al Conto
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Riepilogo Costi -->
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Riepilogo Costi</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h6>Quota</h6>
+                            <p class="text-primary">€{{ "%.2f"|format(socio_selezionato.costo_quota|default(0)) }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6>Bar</h6>
+                            <p class="text-success">€{{ "%.2f"|format(socio_selezionato.costo_bar|default(0)) }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6>Totale</h6>
+                            <p class="text-danger fw-bold">€{{ "%.2f"|format((socio_selezionato.costo_quota|default(0) + socio_selezionato.costo_bar|default(0))) }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

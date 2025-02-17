@@ -1,0 +1,19 @@
+{% if evento.partecipanti_nomi %}
+<h6 class="mb-3">Partecipanti:</h6>
+<div class="row mb-3">
+    {% for nome, quota, id in zip(evento.partecipanti_nomi, evento.partecipanti_quote, evento.partecipanti_ids) %}
+    <div class="col-md-4 mb-2">
+        <div class="d-flex align-items-center">
+            <span class="me-2">{{ loop.index }}.</span>
+            <span class="badge {% if quota %}bg-success{% else %}bg-warning{% endif %} me-2 quota-badge" 
+                  title="{% if quota %}Quota versata{% else %}Quota non versata{% endif %}"
+                  onclick="toggleQuota(event, {{ evento.id }}, {{ id }}, {{ quota|tojson }})"
+                  style="cursor: pointer;">
+                <i class="fas {% if quota %}fa-check{% else %}fa-exclamation{% endif %}"></i>
+            </span>
+            {{ nome }}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}

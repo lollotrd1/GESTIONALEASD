@@ -1,0 +1,747 @@
+{% extends "base.html" %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<style>
+    .cursor-pointer {
+        cursor: pointer;
+    }
+    .card-header button {
+        position: relative;
+        z-index: 2;
+    }
+    .card-header button:hover {
+        z-index: 3;
+    }
+    .socio-checkbox {
+        width: 20px;
+        height: 20px;
+        margin-right: 10px;
+    }
+</style>
+<div class="container-fluid">
+    <!-- Messages Flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Form Attiva Socio -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Attiva Socio</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('aggiungi_socio') }}" id="formAttivaSocio" class="row g-3" onsubmit="return validateForm()">
+                        <div class="col-md-6">
+                            <label for="nome_cognome" class="form-label">Nome e Cognome</label>
+                            <input type="text" class="form-control" id="nome_cognome" name="nome_cognome" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="quota" class="form-label">Quota (opzionale)</label>
+                            <select class="form-select" id="quota" name="quota">
+                                <option value="" selected disabled>Seleziona quota</option>
+                                {% for t in tariffe %}
+                                <option value="{{ t[1] }}">{{ t[1] }} - €{{ "%.2f"|format(t[2]) }} ({{ t[3] }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Sezione Prodotti Bar -->
+                        <div class="col-12 mt-4">
+                            <h6>Prodotti Bar</h6>
+                            <div id="prodottiBarContainer">
+                                <div class="row g-3 mb-2 prodotto-bar-row">
+                                    <div class="col-md-6">
+                                        <select class="form-select prodotto-select" name="prodotti[]">
+                                            <option value="" selected disabled>Seleziona prodotto</option>
+                                            {% for p in prodotti_bar %}
+                                            <option value="{{ p[0] }}" data-prezzo="{{ p[2] }}">{{ p[1] }} - €{{ "%.2f"|format(p[2]) }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <input type="number" class="form-control quantita-input" name="quantita[]" value="1" min="1">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="button" class="btn btn-danger btn-sm remove-prodotto">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-secondary mt-2" id="aggiungiProdotto">
+                                <i class="fas fa-plus me-2"></i>Aggiungi Prodotto
+                            </button>
+                        </div>
+
+                        <div class="col-md-12">
+                            <label for="note" class="form-label">Note (opzionale)</label>
+                            <textarea class="form-control" id="note" name="note" rows="1"></textarea>
+                        </div>
+                        <div class="col-12 mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-user-plus me-2"></i>Aggiungi Socio
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form Aggiunta Rapida Bar -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">Aggiunta Rapida Bar</h5>
+                </div>
+                <div class="card-body">
+                    <form id="formAggiungiProdottoRapido" class="row g-3" onsubmit="return handleAggiungiProdotto(event)">
+                        <div class="col-md-4">
+                            <label for="quick_socio" class="form-label">Seleziona Socio</label>
+                            <select class="form-select" id="quick_socio" required>
+                                <option value="" selected disabled>Seleziona socio</option>
+                                {% for s in soci %}
+                                    {% if s.stato != 'Terminato' %}
+                                    <option value="{{ s.id }}">{{ s.nome }} {{ s.cognome }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="quick_prodotto" class="form-label">Prodotto</label>
+                            <select class="form-select" name="prodotto_id" id="quick_prodotto" required>
+                                <option value="" selected disabled>Seleziona prodotto</option>
+                                {% for p in prodotti_bar %}
+                                <option value="{{ p[0] }}">{{ p[1] }} - €{{ "%.2f"|format(p[2]) }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="quick_quantita" class="form-label">Quantità</label>
+                            <input type="number" class="form-control" name="quantita" id="quick_quantita" value="1" min="1" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="d-none d-md-block">&nbsp;</label>
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="fas fa-plus-circle me-2"></i>Aggiungi
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Soci Attivi</h6>
+                            <h2 class="mt-2 mb-0">{{ stats.attivi }}</h2>
+                        </div>
+                        <div>
+                            <i class="fas fa-users fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Soci in Pausa</h6>
+                            <h2 class="mt-2 mb-0">{{ stats.in_pausa }}</h2>
+                        </div>
+                        <div>
+                            <i class="fas fa-pause-circle fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Soci Terminati</h6>
+                            <h2 class="mt-2 mb-0">{{ stats.terminati }}</h2>
+                        </div>
+                        <div>
+                            <i class="fas fa-user-slash fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="incasso-container">
+                            <h6 class="card-title mb-0">
+                                Incasso
+                                <button class="btn btn-sm text-white" onclick="toggleIncasso()" id="toggleIncassoBtn">
+                                    <i class="fas fa-eye" id="toggleIncassoIcon"></i>
+                                </button>
+                            </h6>
+                            <h2 class="mt-2 mb-0" id="incassoValue">****</h2>
+                        </div>
+                        <div>
+                            <i class="fas fa-euro-sign fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Delete Selected Button -->
+    <div class="row mb-3">
+        <div class="col-12 d-flex align-items-center">
+            <div class="form-check me-3">
+                <input type="checkbox" class="form-check-input" id="selectAllCheckbox">
+                <label class="form-check-label" for="selectAllCheckbox">Seleziona Tutti</label>
+            </div>
+            <button id="deleteSelectedBtn" class="btn btn-danger" style="display: none;">
+                <i class="fas fa-trash me-2"></i>Elimina Soci Selezionati
+            </button>
+        </div>
+    </div>
+
+    <!-- Lista Soci -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Lista Soci</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for socio in soci %}
+                        <div class="col-12 mb-3">
+                            <div class="card">
+                                <div class="card-header bg-light cursor-pointer" data-bs-toggle="collapse" data-bs-target="#socio{{ socio.id }}">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="d-flex align-items-center">
+                                            {% if socio.stato == 'Terminato' %}
+                                            <input type="checkbox" class="socio-checkbox" data-socio-id="{{ socio.id }}" onclick="event.stopPropagation();">
+                                            {% endif %}
+                                            <h6 class="mb-0">{{ socio.nome }} {{ socio.cognome }}</h6>
+                                            <span class="badge {% if socio.stato == 'Attivo' %}bg-success{% elif socio.stato == 'In Pausa' %}bg-warning{% else %}bg-danger{% endif %} ms-2">
+                                                {{ socio.stato }}
+                                            </span>
+                                        </div>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </div>
+                                </div>
+                                <div class="collapse" id="socio{{ socio.id }}">
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <h6 class="text-muted">Dettagli Quota</h6>
+                                                <p class="mb-1">
+                                                    <span class="badge bg-primary">{{ socio.tipo_pesca }}</span>
+                                                </p>
+                                                <p class="mb-1">
+                                                    <small class="text-muted">Inizio Attività:</small><br>
+                                                    {{ socio.inizio_attivita.strftime('%H:%M:%S %d/%m/%Y') if socio.inizio_attivita else 'Non iniziata' }}
+                                                </p>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <h6 class="text-muted">Costi</h6>
+                                                <p class="mb-1">Quota: <span class="text-primary" data-costo-quota data-socio-id="{{socio.id}}">€{{ "%.2f"|format(socio.costo_quota|default(0)) }}</span></p>
+                                                <p class="mb-1">Bar: <span class="text-success" data-costo-bar data-socio-id="{{socio.id}}">€{{ "%.2f"|format(socio.costo_bar|default(0)) }}</span></p>
+                                                <p class="mb-1 fw-bold">Totale: <span class="text-danger" data-costo-totale data-socio-id="{{socio.id}}">€{{ "%.2f"|format((socio.costo_quota|default(0) + socio.costo_bar|default(0))) }}</span></p>
+                                            </div>
+                                            <div class="col-md-4 text-end">
+                                                {% if socio.stato == 'Terminato' %}
+                                                    <button type="button" class="btn btn-success me-2" onclick="updateStatoSocio({{ socio.id }}, 'Attivo', event)">
+                                                        <i class="fas fa-redo me-1"></i>
+                                                        Riattiva
+                                                    </button>
+                                                {% else %}
+                                                    <div class="btn-group">
+                                                        <button type="button" class="btn {% if socio.stato == 'Attivo' %}btn-warning{% else %}btn-success{% endif %} me-2" onclick="updateStatoSocio({{ socio.id }}, '{% if socio.stato == 'Attivo' %}In Pausa{% else %}Attivo{% endif %}', event)">
+                                                            <i class="fas {% if socio.stato == 'Attivo' %}fa-pause{% else %}fa-play{% endif %} me-1"></i>
+                                                            {% if socio.stato == 'Attivo' %}Metti in Pausa{% else %}Riattiva{% endif %}
+                                                        </button>
+                                                        <button type="button" class="btn btn-danger me-2" 
+                                                                onclick="confirmTerminate({{ socio.id }}, {{ socio.costo_quota|default(0) }}, {{ socio.costo_bar|default(0) }})">
+                                                            <i class="fas fa-stop-circle me-1"></i>
+                                                            Termina
+                                                        </button>
+                                                    </div>
+                                                {% endif %}
+                                                <a href="{{ url_for('gestione_socio', socio_id=socio.id) }}" class="btn btn-primary">
+                                                    <i class="fas fa-edit me-1"></i> Gestisci
+                                                </a>
+                                            </div>
+                                        </div>
+
+                                        <!-- Aggiungi Prodotti Bar -->
+                                        {% if socio.stato != 'Terminato' %}
+                                        <div class="row mt-4">
+                                            <div class="col-12">
+                                                <h6 class="text-muted mb-3">Aggiungi Consumazione Bar</h6>
+                                                <form action="{{ url_for('add_prodotto_socio', socio_id=socio.id) }}" method="POST" class="row g-3">
+                                                    <div class="col-md-6">
+                                                        <select class="form-select" name="prodotto_id" required>
+                                                            <option value="" selected disabled>Seleziona prodotto</option>
+                                                            {% for p in prodotti_bar %}
+                                                            <option value="{{ p[0] }}">{{ p[1] }} - €{{ "%.2f"|format(p[2]) }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <input type="number" class="form-control" name="quantita" value="1" min="1" required>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <button type="submit" class="btn btn-success w-100">
+                                                            <i class="fas fa-plus-circle me-2"></i>Aggiungi
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        {% if not soci %}
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                Nessun socio trovato.
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function validateForm() {
+    const quotaSelect = document.getElementById('quota');
+    if (!quotaSelect.value) {
+        return confirm("Non hai selezionato nessuna quota. Il socio verrà registrato solo per il consumo al bar. Vuoi continuare?");
+    }
+    return true;
+}
+
+// Gestione prodotti bar
+document.getElementById('aggiungiProdotto').addEventListener('click', function() {
+    const container = document.getElementById('prodottiBarContainer');
+    const newRow = container.querySelector('.prodotto-bar-row').cloneNode(true);
+
+    // Reset values
+    newRow.querySelector('.prodotto-select').value = '';
+    newRow.querySelector('.quantita-input').value = '1';
+
+    // Add remove functionality
+    newRow.querySelector('.remove-prodotto').addEventListener('click', function() {
+        this.closest('.prodotto-bar-row').remove();
+    });
+
+    container.appendChild(newRow);
+});
+
+// Add remove functionality to initial row
+document.querySelector('.remove-prodotto').addEventListener('click', function() {
+    if (document.querySelectorAll('.prodotto-bar-row').length > 1) {
+        this.closest('.prodotto-bar-row').remove();
+    }
+});
+
+// Toggle incasso functionality
+function toggleIncasso() {
+    const incassoValue = document.getElementById('incassoValue');
+    const toggleIcon = document.getElementById('toggleIncassoIcon');
+
+    if (incassoValue.textContent === '****') {
+        fetch('/api/incassi')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    incassoValue.textContent = `€${data.Totale.toFixed(2)}`;
+                    toggleIcon.classList.remove('fa-eye-slash');
+                    toggleIcon.classList.add('fa-eye');
+                } else {
+                    throw new Error(data.message || 'Errore nel recupero degli incassi');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching incassi:', error);
+                incassoValue.textContent = '€0.00';
+                showAlert('Errore nel recupero degli incassi', 'error');
+            });
+    } else {
+        incassoValue.textContent = '****';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+    }
+}
+
+// Inizializza lo stato dell'incasso come nascosto
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleIcon = document.getElementById('toggleIncassoIcon');
+    toggleIcon.classList.remove('fa-eye');
+    toggleIcon.classList.add('fa-eye-slash');
+});
+
+// Funzioni per la gestione asincrona delle azioni sui soci
+async function updateStatoSocio(socioId, nuovoStato, event) {
+    if (event) {
+        event.preventDefault();
+    }
+
+    try {
+        const response = await fetch(`/gestione-socio/${socioId}/update-stato`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ stato: nuovoStato })
+        });
+
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Aggiorna l'UI dinamicamente
+            updateSocioUI(socioId, nuovoStato);
+            // Mostra un messaggio di successo
+            showAlert(data.message, 'success');
+        } else {
+            showAlert(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Errore durante l\'aggiornamento dello stato', 'error');
+    }
+}
+
+// Funzione per aggiornare l'UI di un socio
+function updateSocioUI(socioId, nuovoStato) {
+    const socioCard = document.querySelector(`#socio${socioId}`);
+    if (!socioCard) return;
+
+    // Aggiorna il badge dello stato
+    const statoBadge = socioCard.closest('.card').querySelector('.badge');
+    if (statoBadge) {
+        statoBadge.className = `badge ms-2 ${nuovoStato === 'Attivo' ? 'bg-success' : nuovoStato === 'In Pausa' ? 'bg-warning' : 'bg-danger'}`;
+        statoBadge.textContent = nuovoStato;
+    }
+
+    // Aggiorna i pulsanti delle azioni
+    const actionContainer = socioCard.closest('.card').querySelector('.col-md-4.text-end');
+    if (actionContainer) {
+        if (nuovoStato === 'Terminato') {
+            actionContainer.innerHTML = `
+                <button type="button" class="btn btn-success me-2" onclick="updateStatoSocio(${socioId}, 'Attivo', event)">
+                    <i class="fas fa-redo me-1"></i>
+                    Riattiva
+                </button>
+                <a href="/gestione-socio/${socioId}" class="btn btn-primary">
+                    <i class="fas fa-edit me-1"></i> Gestisci
+                </a>
+            `;
+        } else {
+            actionContainer.innerHTML = `
+                <div class="btn-group">
+                    <button type="button" class="btn ${nuovoStato === 'Attivo' ? 'btn-warning' : 'btn-success'} me-2" 
+                            onclick="updateStatoSocio(${socioId}, '${nuovoStato === 'Attivo' ? 'In Pausa' : 'Attivo'}', event)">
+                        <i class="fas ${nuovoStato === 'Attivo' ? 'fa-pause' : 'fa-play'} me-1"></i>
+                        ${nuovoStato === 'Attivo' ? 'Metti in Pausa' : 'Riattiva'}
+                    </button>
+                    <button type="button" class="btn btn-danger me-2" 
+                            onclick="confirmTerminate(${socioId})">
+                        <i class="fas fa-stop-circle me-1"></i>
+                        Termina
+                    </button>
+                </div>
+                <a href="/gestione-socio/${socioId}" class="btn btn-primary">
+                    <i class="fas fa-edit me-1"></i> Gestisci
+                </a>
+            `;
+        }
+    }
+
+    // Aggiorna le statistiche
+    updateStatistiche();
+}
+
+
+// Funzione per aggiornare le statistiche
+async function updateStatistiche() {
+    try {
+        const response = await fetch('/api/statistiche');
+        if (!response.ok) throw new Error('Network response was not ok');
+        const stats = await response.json();
+
+        // Aggiorna i contatori nelle cards
+        document.querySelector('.stats-attivi').textContent = stats.attivi;
+        document.querySelector('.stats-pausa').textContent = stats.in_pausa;
+        document.querySelector('.stats-terminati').textContent = stats.terminati;
+    } catch (error) {
+        console.error('Error updating statistics:', error);
+    }
+}
+
+// Funzione per mostrare alert
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+
+    const container = document.querySelector('.container-fluid');
+    container.insertBefore(alertDiv, container.firstChild);
+
+    // Rimuovi l'alert dopo 5 secondi
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+
+// Modifica la funzione confirmTerminate per usare chiamate asincrone
+function confirmTerminate(socioId, costoQuota, costoBar) {
+    const totale = costoQuota + costoBar;
+    const message = `Il totale da pagare è: €${totale.toFixed(2)}\n` +
+                   `- Quota: €${costoQuota.toFixed(2)}\n` +
+                   `- Bar: €${costoBar.toFixed(2)}\n\n` +
+                   'Sei sicuro di voler terminare l\'attività di questo socio?';
+
+    if (confirm(message)) {
+        updateStatoSocio(socioId, 'Terminato');
+    }
+}
+
+// Funzione per aggiornare i costi di un socio
+async function updateCostiSocio(socioId) {
+    try {
+        const response = await fetch(`/api/socio/${socioId}/costi`);
+        if (!response.ok) throw new Error('Network response was not ok');
+        const data = await response.json();
+
+        if (data.success) {
+            const socioCard = document.querySelector(`#socio${socioId}`);
+            if (socioCard) {
+                // Aggiorna i costi nel card del socio
+                socioCard.querySelector('[data-costo-quota]').textContent = `€${data.costo_quota.toFixed(2)}`;
+                socioCard.querySelector('[data-costo-bar]').textContent = `€${data.costo_bar.toFixed(2)}`;
+                socioCard.querySelector('[data-costo-totale]').textContent = `€${data.totale.toFixed(2)}`;
+            }
+        }
+    } catch (error) {
+        console.error('Error updating costs:', error);
+    }
+}
+
+// Modifica la funzione handleAggiungiProdotto per aggiornare i costi
+async function handleAggiungiProdotto(event) {
+    event.preventDefault();
+
+    const socioId = document.getElementById('quick_socio').value;
+    const prodottoId = document.getElementById('quick_prodotto').value;
+    const quantita = document.getElementById('quick_quantita').value;
+
+    if (!socioId || !prodottoId) {
+        showAlert('Seleziona un socio e un prodotto', 'error');
+        return false;
+    }
+
+    try {
+        const response = await fetch(`/gestione-socio/${socioId}/add-prodotto`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                prodotto_id: prodottoId,
+                quantita: parseInt(quantita)
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showAlert(data.message, 'success');
+            // Reset form
+            document.getElementById('quick_prodotto').value = '';
+            document.getElementById('quick_quantita').value = '1';
+            // Aggiorna i costi
+            await updateCostiSocio(socioId);
+        } else {
+            showAlert(data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showAlert('Errore durante l\'aggiunta del prodotto', 'error');
+    }
+
+    return false;
+}
+
+// Aggiorna i form all'interno delle card dei soci per aggiornare i costi
+document.querySelectorAll('form[action*="/add-prodotto"]').forEach(form => {
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const socioId = this.action.match(/\/gestione-socio\/(\d+)\/add-prodotto/)[1];
+        const prodottoId = this.querySelector('select[name="prodotto_id"]').value;
+        const quantita = this.querySelector('input[name="quantita"]').value;
+
+        try {
+            const response = await fetch(`/gestione-socio/${socioId}/add-prodotto`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    prodotto_id: prodottoId,
+                    quantita: parseInt(quantita)
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showAlert(data.message, 'success');
+                // Reset form
+                this.querySelector('select[name="prodotto_id"]').value = '';
+                this.querySelector('input[name="quantita"]').value = '1';
+                // Aggiorna i costi
+                await updateCostiSocio(socioId);
+            } else {
+                showAlert(data.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showAlert('Errore durante l\'aggiunta del prodotto', 'error');
+        }
+    });
+});
+
+// Add new functions for multiple selection
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.socio-checkbox');
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+
+    // Funzione per aggiornare il pulsante elimina
+    function updateDeleteButton() {
+        const checkedBoxes = document.querySelectorAll('.socio-checkbox:checked');
+        deleteSelectedBtn.style.display = checkedBoxes.length > 0 ? 'block' : 'none';
+    }
+
+    // Event listener per il checkbox "Seleziona tutti"
+    selectAllCheckbox.addEventListener('change', function() {
+        const isChecked = this.checked;
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = isChecked;
+        });
+        updateDeleteButton();
+    });
+
+    // Event listener per i singoli checkbox
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            // Aggiorna lo stato del checkbox "Seleziona tutti"
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            selectAllCheckbox.checked = allChecked;
+            // Aggiorna il pulsante elimina
+            updateDeleteButton();
+        });
+    });
+
+    deleteSelectedBtn.addEventListener('click', async function() {
+        const checkedBoxes = document.querySelectorAll('.socio-checkbox:checked');
+        // Convert IDs to integers
+        const sociIds = Array.from(checkedBoxes).map(cb => parseInt(cb.dataset.socioId, 10));
+
+        if (confirm(`Sei sicuro di voler eliminare definitivamente ${sociIds.length} soci selezionati?`)) {
+            try {
+                const response = await fetch('/elimina-soci', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ soci_ids: sociIds })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('Soci eliminati con successo', 'success');
+                    // Rimuovi le card dei soci eliminati
+                    sociIds.forEach(id => {
+                        const socioCard = document.querySelector(`.card-header [data-socio-id="${id}"]`).closest('.col-12');
+                        if (socioCard) {
+                            socioCard.remove();
+                        }
+                    });
+
+                    // Aggiorna le statistiche
+                    updateStatistiche();
+
+                    // Aggiorna il contatore dell'incasso se è visibile
+                    const incassoValue = document.getElementById('incassoValue');
+                    if (incassoValue.textContent !== '****') {
+                        // Richiama l'API per aggiornare l'incasso
+                        fetch('/api/incassi')
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    incassoValue.textContent = `€${data.Totale.toFixed(2)}`;
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error updating incassi:', error);
+                            });
+                    }
+
+                    // Resetta i checkbox
+                    selectAllCheckbox.checked = false;
+                    deleteSelectedBtn.style.display = 'none';
+                } else {
+                    showAlert(data.message || 'Errore durante l\'eliminazione dei soci', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Errore durante l\'eliminazione dei soci', 'error');
+            }
+        }
+    });
+});
+
+</script>
+
+{% endblock %}

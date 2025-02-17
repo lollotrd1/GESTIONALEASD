@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block page_title %}Gestione Quote{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Messages Flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Aggiungi Nuova Quota -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Aggiungi Nuova Quota</h5>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('add_quota') }}" method="POST" class="row g-3">
+                <div class="col-md-4">
+                    <label for="nome" class="form-label">Nome Quota</label>
+                    <input type="text" class="form-control" id="nome" name="nome" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="prezzo" class="form-label">Prezzo (€)</label>
+                    <input type="number" step="0.50" class="form-control" id="prezzo" name="prezzo" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="tipo" class="form-label">Tipo Quota</label>
+                    <select class="form-select" id="tipo" name="tipo" required>
+                        <option value="Oraria">Oraria</option>
+                        <option value="Fissa">Fissa</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus-circle me-2"></i>Aggiungi Quota
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista Quote -->
+    <div class="card">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Quote Esistenti</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Prezzo</th>
+                            <th>Tipo</th>
+                            <th>Data Creazione</th>
+                            <th>Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for q in quote %}
+                        <tr>
+                            <td>{{ q[1] }}</td>
+                            <td>€{{ "%.2f"|format(q[2]) }}</td>
+                            <td>
+                                <span class="badge {% if q[3] == 'Oraria' %}bg-info{% else %}bg-success{% endif %}">
+                                    {{ q[3] }}
+                                </span>
+                            </td>
+                            <td>{{ q[4] }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-warning" onclick="showEditModal({{ q[0] }}, '{{ q[1] }}', {{ q[2] }}, '{{ q[3] }}')">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteQuota({{ q[0] }})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal di Modifica -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Modifica Quota</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm" class="row g-3">
+                    <input type="hidden" id="edit_id">
+                    <div class="col-md-12">
+                        <label for="edit_nome" class="form-label">Nome Quota</label>
+                        <input type="text" class="form-control" id="edit_nome" required>
+                    </div>
+                    <div class="col-md-12">
+                        <label for="edit_prezzo" class="form-label">Prezzo (€)</label>
+                        <input type="number" step="0.50" class="form-control" id="edit_prezzo" required>
+                    </div>
+                    <div class="col-md-12">
+                        <label for="edit_tipo" class="form-label">Tipo Quota</label>
+                        <select class="form-select" id="edit_tipo" required>
+                            <option value="Oraria">Oraria</option>
+                            <option value="Fissa">Fissa</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" onclick="saveQuota()">Salva</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let editModal;
+
+document.addEventListener('DOMContentLoaded', function() {
+    editModal = new bootstrap.Modal(document.getElementById('editModal'));
+});
+
+function showEditModal(id, nome, prezzo, tipo) {
+    document.getElementById('edit_id').value = id;
+    document.getElementById('edit_nome').value = nome;
+    document.getElementById('edit_prezzo').value = prezzo;
+    document.getElementById('edit_tipo').value = tipo;
+    editModal.show();
+}
+
+function saveQuota() {
+    const id = document.getElementById('edit_id').value;
+    const nome = document.getElementById('edit_nome').value;
+    const prezzo = document.getElementById('edit_prezzo').value;
+    const tipo = document.getElementById('edit_tipo').value;
+
+    fetch(`/pesca/quote/edit/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            'nome': nome,
+            'prezzo': prezzo,
+            'tipo': tipo
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            editModal.hide();
+            // Ricarica la pagina per mostrare i dati aggiornati
+            window.location.reload();
+        } else {
+            showNotification(data.message, 'error');
+        }
+    });
+}
+
+function deleteQuota(id) {
+    if (confirm('Sei sicuro di voler eliminare questa quota?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/pesca/quote/delete/${id}`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function showNotification(message, type = 'success') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    document.querySelector('.container-fluid').insertBefore(alertDiv, document.querySelector('.container-fluid').firstChild);
+    setTimeout(() => alertDiv.remove(), 5000);
+}
+</script>
+{% endblock %}

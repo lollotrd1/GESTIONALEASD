@@ -1,0 +1,21 @@
+{% extends "report_base.html" %}
+
+{% block report_title %}Report Mensile{% endblock %}
+
+{% block report_details %}
+<div class="mb-4">
+    <h6 class="text-muted">Riepilogo Incassi del Mese</h6>
+    <div class="list-group">
+        {% for tipo, valore in incassi.items() %}
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+            {{ tipo }}
+            <span class="badge bg-primary rounded-pill">€{{ "%.2f"|format(valore) }}</span>
+        </div>
+        {% endfor %}
+        <div class="list-group-item d-flex justify-content-between align-items-center fw-bold">
+            Totale
+            <span class="badge bg-success rounded-pill">€{{ "%.2f"|format(totale) }}</span>
+        </div>
+    </div>
+</div>
+{% endblock %}

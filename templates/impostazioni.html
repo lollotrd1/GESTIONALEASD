@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block page_title %}Impostazioni{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Impostazioni</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Le impostazioni dell'applicazione saranno disponibili nelle prossime versioni.
+                    </div>
+                    <div class="list-group">
+                        <a href="#" class="list-group-item list-group-item-action disabled">
+                            <i class="fas fa-palette me-2"></i>
+                            Tema dell'applicazione
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action disabled">
+                            <i class="fas fa-bell me-2"></i>
+                            Notifiche
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action disabled">
+                            <i class="fas fa-language me-2"></i>
+                            Lingua
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

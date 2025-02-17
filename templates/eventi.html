@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+
+{% block page_title %}Eventi{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>Eventi</h2>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left"></i> Torna alla Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form per nuovo evento -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Nuovo Evento</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('aggiungi_evento') }}" class="row g-3">
+                        <div class="col-md-6">
+                            <label for="titolo" class="form-label">Titolo</label>
+                            <input type="text" class="form-control" id="titolo" name="titolo" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="data" class="form-label">Data Inizio</label>
+                            <input type="date" class="form-control" id="data" name="data" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="ora" class="form-label">Ora Inizio</label>
+                            <input type="time" class="form-control" id="ora" name="ora" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="data_fine" class="form-label">Data Fine</label>
+                            <input type="date" class="form-control" id="data_fine" name="data_fine" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="ora_fine" class="form-label">Ora Fine</label>
+                            <input type="time" class="form-control" id="ora_fine" name="ora_fine" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="max_partecipanti" class="form-label">Numero Massimo Partecipanti</label>
+                            <input type="number" class="form-control" id="max_partecipanti" name="max_partecipanti" 
+                                   min="1" step="1">
+                        </div>
+                        <div class="col-12">
+                            <label for="descrizione" class="form-label">Descrizione</label>
+                            <textarea class="form-control" id="descrizione" name="descrizione" rows="3"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus-circle me-2"></i>Aggiungi Evento
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista Eventi -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Lista Eventi</h5>
+                </div>
+                <div class="card-body">
+                    {% if eventi %}
+                        <div class="accordion" id="accordionEventi">
+                            {% for evento in eventi %}
+                            <div class="accordion-item mb-3" id="evento-{{ evento.id }}">
+                                <h2 class="accordion-header" id="heading{{ evento.id }}">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                            data-bs-target="#collapse{{ evento.id }}" aria-expanded="false" 
+                                            aria-controls="collapse{{ evento.id }}">
+                                        <div class="d-flex justify-content-between align-items-center w-100">
+                                            <span><strong>{{ evento.titolo }}</strong> - 
+                                                {{ evento.data.strftime('%d/%m/%Y') }} {{ evento.ora.strftime('%H:%M') }}
+                                                {% if evento.data_fine and evento.ora_fine %} 
+                                                - {{ evento.data_fine.strftime('%d/%m/%Y') }} {{ evento.ora_fine.strftime('%H:%M') }}
+                                                {% endif %}</span>
+                                            <span class="badge bg-primary rounded-pill ms-2">
+                                                {{ evento.partecipanti_nomi|length }}
+                                                {% if evento.max_partecipanti %}
+                                                    /{{ evento.max_partecipanti }}
+                                                {% endif %}
+                                                partecipanti
+                                            </span>
+                                        </div>
+                                    </button>
+                                </h2>
+                                <div id="collapse{{ evento.id }}" class="accordion-collapse collapse" 
+                                     aria-labelledby="heading{{ evento.id }}" data-bs-parent="#accordionEventi">
+                                    <div class="accordion-body">
+                                        <!-- Form modifica evento -->
+                                        <form onsubmit="return updateEvento(event, {{ evento.id }})" 
+                                              class="row g-3 mb-4">
+                                            <div class="col-md-6">
+                                                <label class="form-label">Titolo</label>
+                                                <input type="text" class="form-control" name="titolo" 
+                                                       value="{{ evento.titolo }}" required>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Data Inizio</label>
+                                                <input type="date" class="form-control" name="data" 
+                                                       value="{{ evento.data }}" required>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Ora Inizio</label>
+                                                <input type="time" class="form-control" name="ora" 
+                                                       value="{{ evento.ora.strftime('%H:%M') if evento.ora else '' }}" required>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Data Fine</label>
+                                                <input type="date" class="form-control" name="data_fine" 
+                                                       value="{{ evento.data_fine }}" required>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Ora Fine</label>
+                                                <input type="time" class="form-control" name="ora_fine" 
+                                                       value="{{ evento.ora_fine.strftime('%H:%M') if evento.ora_fine else '' }}" required>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Numero Massimo Partecipanti</label>
+                                                <input type="number" class="form-control" name="max_partecipanti" 
+                                                       value="{{ evento.max_partecipanti }}" min="1" step="1">
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="form-label">Descrizione</label>
+                                                <textarea class="form-control" name="descrizione" 
+                                                          rows="3">{{ evento.descrizione }}</textarea>
+                                            </div>
+                                            <div class="col-12">
+                                                <button type="submit" class="btn btn-success">
+                                                    <i class="fas fa-save me-2"></i>Salva Modifiche
+                                                </button>
+                                            </div>
+                                        </form>
+
+                                        <hr>
+
+                                        <!-- Lista Partecipanti -->
+                                        <div id="partecipanti-list-{{ evento.id }}">
+                                            {% if evento.partecipanti_nomi %}
+                                            <h6 class="mb-3">Partecipanti:</h6>
+                                            <div class="row mb-3">
+                                                {% for nome, quota, id in zip(evento.partecipanti_nomi, evento.partecipanti_quote, evento.partecipanti_ids) %}
+                                                <div class="col-md-4 mb-2">
+                                                    <div class="d-flex align-items-center">
+                                                        <span class="me-2">{{ loop.index }}.</span>
+                                                        <span class="badge {% if quota %}bg-success{% else %}bg-warning{% endif %} me-2 quota-badge" 
+                                                              title="{% if quota %}Quota versata{% else %}Quota non versata{% endif %}"
+                                                              onclick="toggleQuota(event, {{ evento.id }}, {{ id }}, {{ quota|tojson }})"
+                                                              style="cursor: pointer;">
+                                                            <i class="fas {% if quota %}fa-check{% else %}fa-exclamation{% endif %}"></i>
+                                                        </span>
+                                                        {{ nome }}
+                                                    </div>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+
+                                        <!-- Form per aggiungere partecipanti -->
+                                        <form onsubmit="return addPartecipante(event, {{ evento.id }})" 
+                                              class="row g-3 align-items-end">
+                                            <div class="col-md-4">
+                                                <label class="form-label">Nome e Cognome</label>
+                                                <input type="text" class="form-control" name="nome_cognome" required>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="quota_versata" 
+                                                           id="quota_{{ evento.id }}">
+                                                    <label class="form-check-label" for="quota_{{ evento.id }}">
+                                                        Quota Versata
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <button type="submit" class="btn btn-outline-primary btn-sm">
+                                                    <i class="fas fa-plus-circle me-1"></i>
+                                                    Aggiungi ai Partecipanti
+                                                </button>
+                                            </div>
+                                        </form>
+
+                                        <!-- Pulsante elimina evento -->
+                                        <div class="mt-4 text-end">
+                                            <button class="btn btn-outline-danger btn-sm" onclick="deleteEvento(event, {{ evento.id }})">
+                                                <i class="fas fa-trash me-1"></i>Elimina Evento
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            Nessun evento programmato.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Funzione per mostrare notifiche
+function showNotification(message, type = 'success') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    document.querySelector('.main-content').insertBefore(alertDiv, document.querySelector('.main-content').firstChild);
+    setTimeout(() => alertDiv.remove(), 5000);
+}
+
+// Funzione per aggiornare la lista partecipanti
+function updatePartecipantiList(eventoId) {
+    fetch(`/eventi/partecipanti/${eventoId}`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById(`partecipanti-list-${eventoId}`).innerHTML = html;
+        });
+}
+
+// Funzione per aggiungere un partecipante
+function addPartecipante(event, eventoId) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+
+    fetch(`/eventi/partecipante/${eventoId}`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message);
+            updatePartecipantiList(eventoId);
+            updatePartecipantiCounter(eventoId);
+            form.reset();
+        } else {
+            showNotification(data.message, 'error');
+        }
+    });
+
+    return false;
+}
+
+// Funzione per aggiornare un evento
+function updateEvento(event, eventoId) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+
+    fetch(`/eventi/modifica/${eventoId}`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message);
+        } else {
+            showNotification(data.message, 'error');
+        }
+    });
+
+    return false;
+}
+
+// Funzione per eliminare un evento
+function deleteEvento(event, eventoId) {
+    event.preventDefault();
+    if (confirm('Sei sicuro di voler eliminare questo evento?')) {
+        fetch(`/eventi/elimina/${eventoId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message);
+                document.getElementById(`evento-${eventoId}`).remove();
+            } else {
+                showNotification(data.message, 'error');
+            }
+        });
+    }
+}
+
+// Funzione per aggiornare il contatore dei partecipanti
+function updatePartecipantiCounter(eventoId) {
+    fetch(`/eventi/contatore/${eventoId}`)
+        .then(response => response.json())
+        .then(data => {
+            const headerButton = document.querySelector(`#heading${eventoId} button`);
+            const badge = headerButton.querySelector('.badge');
+            badge.textContent = `${data.count}${data.max_partecipanti ? '/' + data.max_partecipanti : ''} partecipanti`;
+        });
+}
+
+// Funzione per gestire il toggle della quota
+function toggleQuota(event, eventoId, partecipanteId, currentStatus) {
+    event.preventDefault();
+    fetch(`/eventi/quota/${eventoId}/${partecipanteId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            quota_versata: !currentStatus
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updatePartecipantiList(eventoId);
+            showNotification(data.message);
+        } else {
+            showNotification(data.message, 'error');
+        }
+    });
+}
+</script>
+{% endblock %}
